@@ -9,8 +9,8 @@ export const TCGAPIS_CONFIG = {
 } as const;
 
 export const SUPABASE_CONFIG = {
-  url: process.env.EXPO_PUBLIC_SUPABASE_URL || '',
-  anonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '',
+  url: process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
+  anonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'placeholder',
 } as const;
 
 /** Valida que las variables de entorno criticas esten configuradas */

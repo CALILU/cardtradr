@@ -7,12 +7,14 @@
 
 import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
 import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { lightTheme } from './src/theme';
 import { validateEnv } from './src/utils/env';
+import { setupAuthAutoRefresh } from './src/api/supabase.client';
+import { useAuthStore } from './src/store/auth.store';
+import { RootNavigator } from './src/navigation';
 
 // React Query con defaults conservadores para 100 calls/dia
 const queryClient = new QueryClient({
@@ -28,6 +30,8 @@ const queryClient = new QueryClient({
 });
 
 export default function App() {
+  const initialize = useAuthStore((s) => s.initialize);
+
   useEffect(() => {
     const envCheck = validateEnv();
     if (!envCheck.isValid) {
@@ -35,44 +39,18 @@ export default function App() {
         `[CardTradr] Variables de entorno faltantes: ${envCheck.missing.join(', ')}`,
       );
     }
-  }, []);
+    initialize();
+    setupAuthAutoRefresh();
+  }, [initialize]);
 
   return (
     <SafeAreaProvider>
       <PaperProvider theme={lightTheme}>
         <QueryClientProvider client={queryClient}>
-          <View style={styles.container}>
-            <Text style={styles.title}>CardTradr</Text>
-            <Text style={styles.subtitle}>Tu coleccion de cartas TCG</Text>
-            <Text style={styles.info}>50+ juegos soportados</Text>
-            <StatusBar style="auto" />
-          </View>
+          <RootNavigator />
+          <StatusBar style="auto" />
         </QueryClientProvider>
       </PaperProvider>
     </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#4267B2',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 18,
-    color: '#606770',
-    marginBottom: 4,
-  },
-  info: {
-    fontSize: 14,
-    color: '#8A8D91',
-  },
-});
