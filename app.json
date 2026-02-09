@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "CardTradr",
+    "slug": "cardtradr",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#4267B2"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.cardtradr.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#4267B2"
+      },
+      "package": "com.cardtradr.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
