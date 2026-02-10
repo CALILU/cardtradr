@@ -29,8 +29,7 @@
     },
     "plugins": [
       "expo-asset",
-      "expo-font",
-      "expo-splash-screen"
+      "expo-font"
     ],
     "extra": {
       "eas": {
