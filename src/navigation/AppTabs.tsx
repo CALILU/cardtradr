@@ -5,6 +5,7 @@ import type { AppTabsParamList } from './types';
 import HomeScreen from '../screens/HomeScreen';
 import SearchStack from './SearchStack';
 import CollectionStack from './CollectionStack';
+import WishlistScreen from '../screens/WishlistScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import { colors } from '../theme';
 
@@ -49,6 +50,18 @@ export default function AppTabs() {
           headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="cards" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="WishlistTab"
+        component={WishlistScreen}
+        options={{
+          title: 'Wishlist',
+          headerStyle: { backgroundColor: colors.primary },
+          headerTintColor: colors.textOnPrimary,
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="heart-outline" color={color} size={size} />
           ),
         }}
       />

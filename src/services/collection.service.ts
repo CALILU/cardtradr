@@ -40,6 +40,21 @@ export async function createCollection(params: {
   return data;
 }
 
+/** Actualizar coleccion */
+export async function updateCollection(
+  collectionId: string,
+  updates: { name?: string; description?: string | null },
+): Promise<Collection> {
+  const { data, error } = await supabase
+    .from('collections')
+    .update(updates)
+    .eq('id', collectionId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 /** Eliminar coleccion */
 export async function deleteCollection(collectionId: string): Promise<void> {
   const { error } = await supabase.from('collections').delete().eq('id', collectionId);
@@ -73,6 +88,21 @@ export async function addCardToCollection(params: {
   const { data, error } = await supabase
     .from('collection_cards')
     .insert(params)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+/** Actualizar carta en coleccion */
+export async function updateCollectionCard(
+  cardId: string,
+  updates: { quantity?: number; condition?: string; notes?: string | null },
+): Promise<CollectionCard> {
+  const { data, error } = await supabase
+    .from('collection_cards')
+    .update(updates)
+    .eq('id', cardId)
     .select()
     .single();
   if (error) throw error;

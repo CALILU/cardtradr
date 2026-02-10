@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, FlatList, StyleSheet } from 'react-native';
+import { View, FlatList, RefreshControl, StyleSheet } from 'react-native';
 import { Searchbar, List, Chip, Button, Text, Divider } from 'react-native-paper';
 import { colors, spacing } from '../theme';
 import { useGames, useExpansions, useCards } from '../hooks';
@@ -129,6 +129,9 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
       <FlatList
         data={filteredGames}
         keyExtractor={(item) => String(item.categoryId)}
+        refreshControl={
+          <RefreshControl refreshing={gamesQuery.isRefetching} onRefresh={() => gamesQuery.refetch()} />
+        }
         renderItem={({ item }) => (
           <List.Item
             title={item.displayName}

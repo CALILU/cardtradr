@@ -23,6 +23,42 @@ export function useCollectionCards(collectionId: string) {
   });
 }
 
+/** Actualizar coleccion (nombre, descripcion) */
+export function useUpdateCollection() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, updates }: { id: string; updates: Parameters<typeof collectionService.updateCollection>[1] }) =>
+      collectionService.updateCollection(id, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['collections'] });
+    },
+  });
+}
+
+/** Eliminar coleccion */
+export function useDeleteCollection() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: collectionService.deleteCollection,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['collections'] });
+      queryClient.invalidateQueries({ queryKey: ['collection-stats'] });
+    },
+  });
+}
+
+/** Actualizar carta en coleccion (cantidad, condicion, notas) */
+export function useUpdateCollectionCard() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, updates }: { id: string; updates: Parameters<typeof collectionService.updateCollectionCard>[1] }) =>
+      collectionService.updateCollectionCard(id, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['collection-cards'] });
+    },
+  });
+}
+
 /** Crear nueva coleccion */
 export function useCreateCollection() {
   const queryClient = useQueryClient();

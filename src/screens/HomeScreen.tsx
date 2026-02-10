@@ -3,19 +3,21 @@ import { View, ScrollView, RefreshControl, StyleSheet } from 'react-native';
 import { Card, Text, Icon } from 'react-native-paper';
 import { colors, spacing } from '../theme';
 import { useAuthStore } from '../store/auth.store';
-import { useCollectionStats, useApiUsage } from '../hooks';
+import { useCollectionStats, useWishlistStats, useApiUsage } from '../hooks';
 import { ErrorMessage } from '../components';
 import * as tcgService from '../services/tcg.service';
 
 export default function HomeScreen() {
   const user = useAuthStore((s) => s.user);
   const stats = useCollectionStats();
+  const wishlistStats = useWishlistStats();
   const usage = useApiUsage();
 
-  const refreshing = stats.isRefetching || usage.isRefetching;
+  const refreshing = stats.isRefetching || usage.isRefetching || wishlistStats.isRefetching;
 
   function handleRefresh() {
     stats.refetch();
+    wishlistStats.refetch();
     usage.refetch();
   }
 
@@ -45,6 +47,12 @@ export default function HomeScreen() {
           label="Cartas"
           value={String(stats.data?.totalCards ?? '-')}
           color={colors.secondary}
+        />
+        <StatCard
+          icon="heart-outline"
+          label="Wishlist"
+          value={String(wishlistStats.data?.totalItems ?? '-')}
+          color={colors.danger}
         />
       </View>
 

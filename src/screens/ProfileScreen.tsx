@@ -1,14 +1,16 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Alert } from 'react-native';
-import { List, Button, Divider, Text } from 'react-native-paper';
+import { List, Button, Divider, Text, Switch } from 'react-native-paper';
 import { colors, spacing } from '../theme';
 import { useAuthStore } from '../store/auth.store';
+import { useSettingsStore } from '../store/settings.store';
 import { useApiUsage } from '../hooks';
 import { tcgapis } from '../api/tcgapis.client';
 import * as tcgService from '../services/tcg.service';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuthStore();
+  const { isDarkMode, toggleDarkMode } = useSettingsStore();
   const usage = useApiUsage();
 
   function handleClearCache() {
@@ -87,6 +89,12 @@ export default function ProfileScreen() {
 
       <List.Section>
         <List.Subheader>Ajustes</List.Subheader>
+        <List.Item
+          title="Modo oscuro"
+          description={isDarkMode ? 'Activado' : 'Desactivado'}
+          left={(props) => <List.Icon {...props} icon="theme-light-dark" />}
+          right={() => <Switch value={isDarkMode} onValueChange={toggleDarkMode} />}
+        />
         <List.Item
           title="Limpiar cache TCGAPIs"
           description="Eliminar datos cacheados localmente"

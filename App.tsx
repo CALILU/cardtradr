@@ -10,10 +10,11 @@ import { StatusBar } from 'expo-status-bar';
 import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { lightTheme } from './src/theme';
+import { lightTheme, darkTheme } from './src/theme';
 import { validateEnv } from './src/utils/env';
 import { setupAuthAutoRefresh } from './src/api/supabase.client';
 import { useAuthStore } from './src/store/auth.store';
+import { useSettingsStore } from './src/store/settings.store';
 import { RootNavigator } from './src/navigation';
 
 // React Query con defaults conservadores para 100 calls/dia
@@ -31,6 +32,7 @@ const queryClient = new QueryClient({
 
 export default function App() {
   const initialize = useAuthStore((s) => s.initialize);
+  const isDarkMode = useSettingsStore((s) => s.isDarkMode);
 
   useEffect(() => {
     const envCheck = validateEnv();
@@ -45,10 +47,10 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <PaperProvider theme={lightTheme}>
+      <PaperProvider theme={isDarkMode ? darkTheme : lightTheme}>
         <QueryClientProvider client={queryClient}>
           <RootNavigator />
-          <StatusBar style="auto" />
+          <StatusBar style={isDarkMode ? 'light' : 'dark'} />
         </QueryClientProvider>
       </PaperProvider>
     </SafeAreaProvider>

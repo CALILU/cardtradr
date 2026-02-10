@@ -29,11 +29,17 @@ export type CollectionStackParamList = {
   CollectionDetail: { collectionId: string; collectionName: string };
 };
 
+/** Stack de wishlist */
+export type WishlistStackParamList = {
+  Wishlist: undefined;
+};
+
 /** Tabs principales de la app */
 export type AppTabsParamList = {
   HomeTab: undefined;
   SearchTab: NavigatorScreenParams<SearchStackParamList>;
   CollectionTab: NavigatorScreenParams<CollectionStackParamList>;
+  WishlistTab: NavigatorScreenParams<WishlistStackParamList>;
   ProfileTab: undefined;
 };
 
@@ -66,6 +72,8 @@ export type CollectionDetailScreenProps = NativeStackScreenProps<
   CollectionStackParamList,
   'CollectionDetail'
 >;
+
+export type WishlistScreenProps = NativeStackScreenProps<WishlistStackParamList, 'Wishlist'>;
 
 export type ProfileScreenProps = CompositeScreenProps<
   BottomTabScreenProps<AppTabsParamList, 'ProfileTab'>,

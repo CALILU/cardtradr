@@ -9,9 +9,11 @@ import {
   Portal,
   RadioButton,
   ActivityIndicator,
+  SegmentedButtons,
+  TextInput,
 } from 'react-native-paper';
 import { colors, spacing } from '../theme';
-import { useCards, useCollections, useAddCardToCollection } from '../hooks';
+import { useCards, useCollections, useAddCardToCollection, useAddToWishlist } from '../hooks';
 import { LoadingScreen, ErrorMessage } from '../components';
 import type { CardDetailScreenProps } from '../navigation/types';
 import type { TCGCard } from '../types';
@@ -28,6 +30,12 @@ export default function CardDetailScreen({ route }: CardDetailScreenProps) {
   const [selectedCollectionId, setSelectedCollectionId] = useState('');
   const collectionsQuery = useCollections();
   const addMutation = useAddCardToCollection();
+
+  // Dialog "Agregar a wishlist"
+  const [showWishlistDialog, setShowWishlistDialog] = useState(false);
+  const [wishlistPriority, setWishlistPriority] = useState('3');
+  const [wishlistMaxPrice, setWishlistMaxPrice] = useState('');
+  const addToWishlistMutation = useAddToWishlist();
 
   if (cardsQuery.isLoading) return <LoadingScreen message="Cargando carta..." />;
   if (cardsQuery.error)
@@ -104,7 +112,7 @@ export default function CardDetailScreen({ route }: CardDetailScreenProps) {
         </Card>
       )}
 
-      {/* Boton agregar */}
+      {/* Botones agregar */}
       <Button
         mode="contained"
         icon="plus"
@@ -112,6 +120,14 @@ export default function CardDetailScreen({ route }: CardDetailScreenProps) {
         style={styles.addButton}
       >
         Agregar a Coleccion
+      </Button>
+      <Button
+        mode="outlined"
+        icon="heart-outline"
+        onPress={() => setShowWishlistDialog(true)}
+        style={styles.wishlistButton}
+      >
+        Agregar a Wishlist
       </Button>
 
       {/* Dialog seleccionar coleccion */}
@@ -145,6 +161,74 @@ export default function CardDetailScreen({ route }: CardDetailScreenProps) {
               onPress={handleAddToCollection}
               disabled={!selectedCollectionId || addMutation.isPending}
               loading={addMutation.isPending}
+            >
+              Agregar
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
+
+      {/* Dialog wishlist */}
+      <Portal>
+        <Dialog visible={showWishlistDialog} onDismiss={() => setShowWishlistDialog(false)}>
+          <Dialog.Title>Agregar a Wishlist</Dialog.Title>
+          <Dialog.Content>
+            <Text variant="labelMedium" style={styles.fieldLabel}>
+              Prioridad
+            </Text>
+            <SegmentedButtons
+              value={wishlistPriority}
+              onValueChange={setWishlistPriority}
+              buttons={[
+                { value: '1', label: '1' },
+                { value: '2', label: '2' },
+                { value: '3', label: '3' },
+                { value: '4', label: '4' },
+                { value: '5', label: '5' },
+              ]}
+              style={styles.segmented}
+            />
+            <TextInput
+              label="Precio maximo (opcional)"
+              value={wishlistMaxPrice}
+              onChangeText={setWishlistMaxPrice}
+              keyboardType="numeric"
+              mode="outlined"
+              left={<TextInput.Icon icon="cash" />}
+            />
+            {addToWishlistMutation.error && (
+              <Text style={styles.errorText}>
+                {addToWishlistMutation.error instanceof Error
+                  ? addToWishlistMutation.error.message
+                  : 'Error al agregar'}
+              </Text>
+            )}
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setShowWishlistDialog(false)}>Cancelar</Button>
+            <Button
+              onPress={() => {
+                if (!card) return;
+                addToWishlistMutation.mutate(
+                  {
+                    card_id: String(card.productId),
+                    tcg_type: String(card.groupId),
+                    card_name: card.cleanName || card.name,
+                    priority: Number(wishlistPriority),
+                    max_price: wishlistMaxPrice ? Number(wishlistMaxPrice) : undefined,
+                    cached_image_url: card.image ?? undefined,
+                  },
+                  {
+                    onSuccess: () => {
+                      setShowWishlistDialog(false);
+                      setWishlistPriority('3');
+                      setWishlistMaxPrice('');
+                    },
+                  },
+                );
+              }}
+              loading={addToWishlistMutation.isPending}
+              disabled={addToWishlistMutation.isPending}
             >
               Agregar
             </Button>
@@ -190,7 +274,18 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   addButton: {
-    marginVertical: spacing.md,
+    marginTop: spacing.md,
+  },
+  wishlistButton: {
+    marginTop: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  fieldLabel: {
+    marginBottom: spacing.xs,
+    color: colors.textSecondary,
+  },
+  segmented: {
+    marginBottom: spacing.md,
   },
   errorText: {
     color: colors.danger,

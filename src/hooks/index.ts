@@ -3,7 +3,17 @@ export {
   useCollections,
   useCollectionCards,
   useCreateCollection,
+  useUpdateCollection,
+  useDeleteCollection,
+  useUpdateCollectionCard,
   useAddCardToCollection,
   useRemoveCardFromCollection,
   useCollectionStats,
 } from './useCollections';
+export {
+  useWishlist,
+  useAddToWishlist,
+  useUpdateWishlistItem,
+  useRemoveFromWishlist,
+  useWishlistStats,
+} from './useWishlist';
