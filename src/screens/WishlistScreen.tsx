@@ -12,7 +12,7 @@ import {
 } from 'react-native-paper';
 import { colors, spacing } from '../theme';
 import { useWishlist, useUpdateWishlistItem, useRemoveFromWishlist } from '../hooks';
-import { ErrorMessage, EmptyState, WishlistSkeleton, ConfirmDialog, useSnackbar, SwipeableRow } from '../components';
+import { ErrorMessage, EmptyState, WishlistSkeleton, ConfirmDialog, useSnackbar, SwipeableRow, WatermarkBackground } from '../components';
 import { haptics } from '../utils/haptics';
 import type { WishlistItem } from '../types';
 
@@ -133,6 +133,7 @@ export default function WishlistScreen() {
   }
 
   return (
+    <WatermarkBackground variant={0}>
     <View style={styles.container}>
       <FlatList
         data={wishlist.data}
@@ -213,6 +214,7 @@ export default function WishlistScreen() {
         </Dialog>
       </Portal>
     </View>
+    </WatermarkBackground>
   );
 }
 

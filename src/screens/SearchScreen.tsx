@@ -3,7 +3,7 @@ import { View, FlatList, RefreshControl, StyleSheet } from 'react-native';
 import { Searchbar, List, Button, Text, Divider, IconButton } from 'react-native-paper';
 import { colors, spacing } from '../theme';
 import { useGames, useExpansions, useCards } from '../hooks';
-import { ErrorMessage, EmptyState, CardPreview, CardGridItem, CollectionListSkeleton, CardListSkeleton, CardGridSkeleton } from '../components';
+import { ErrorMessage, EmptyState, CardPreview, CardGridItem, CollectionListSkeleton, CardListSkeleton, CardGridSkeleton, WatermarkBackground } from '../components';
 import { RarityFilter, SortSelector, ResultsCounter, SearchHistoryChips, ExtendedDataFilter } from '../components/search';
 import { useSettingsStore } from '../store/settings.store';
 import { useSearchStore } from '../store/search.store';
@@ -135,6 +135,7 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
   const hasActiveFilters = selectedRarities.length > 0 || Object.values(extendedFilters).some((v) => v.length > 0);
 
   return (
+    <WatermarkBackground variant={level === 'cards' ? 0 : 1}>
     <View style={styles.container}>
       {/* Breadcrumb */}
       <View style={styles.breadcrumb}>
@@ -242,6 +243,7 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
       {level === 'expansions' && renderExpansions()}
       {level === 'cards' && renderCards()}
     </View>
+    </WatermarkBackground>
   );
 
   function renderGames() {

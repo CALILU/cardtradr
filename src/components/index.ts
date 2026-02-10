@@ -8,6 +8,7 @@ export { SkeletonPlaceholder } from './SkeletonPlaceholder';
 export { SnackbarProvider, useSnackbar } from './SnackbarProvider';
 export { ConfirmDialog } from './ConfirmDialog';
 export { SwipeableRow } from './SwipeableRow';
+export { WatermarkBackground } from './WatermarkBackground';
 export {
   CollectionListSkeleton,
   CardListSkeleton,

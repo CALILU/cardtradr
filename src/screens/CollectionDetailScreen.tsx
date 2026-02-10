@@ -12,7 +12,7 @@ import {
 } from 'react-native-paper';
 import { colors, spacing } from '../theme';
 import { useCollectionCards, useRemoveCardFromCollection, useUpdateCollectionCard } from '../hooks';
-import { ErrorMessage, EmptyState, CardGridItem, CardListSkeleton, CardGridSkeleton, ConfirmDialog, useSnackbar, SwipeableRow } from '../components';
+import { ErrorMessage, EmptyState, CardGridItem, CardListSkeleton, CardGridSkeleton, ConfirmDialog, useSnackbar, SwipeableRow, WatermarkBackground } from '../components';
 import { haptics } from '../utils/haptics';
 import { useSettingsStore } from '../store/settings.store';
 import { exportCollectionToCsv } from '../utils/exportCsv';
@@ -123,6 +123,7 @@ export default function CollectionDetailScreen({ route, navigation }: Collection
   const isGrid = cardViewMode === 'grid';
 
   return (
+    <WatermarkBackground variant={1}>
     <View style={styles.container}>
       <FlatList
         key={cardViewMode}
@@ -226,6 +227,7 @@ export default function CollectionDetailScreen({ route, navigation }: Collection
         </Dialog>
       </Portal>
     </View>
+    </WatermarkBackground>
   );
 }
 
