@@ -130,7 +130,7 @@ export default function CollectionListScreen({ navigation }: CollectionListScree
                   collectionName: item.name,
                 })
               }
-              onLongPress={(e) => handleLongPress(item, e)}
+              onLongPress={((e: any) => handleLongPress(item, e)) as () => void}
             >
               <Card.Title
                 title={item.name}

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
-import { List, Button, Divider, Text, Switch } from 'react-native-paper';
+import { List, Button, Divider, Switch } from 'react-native-paper';
 import { colors, spacing } from '../theme';
 import { useAuthStore } from '../store/auth.store';
 import { useSettingsStore } from '../store/settings.store';

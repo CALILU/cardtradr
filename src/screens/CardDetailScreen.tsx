@@ -18,7 +18,6 @@ import { useCards, useCollections, useAddCardToCollection, useAddToWishlist } fr
 import { ErrorMessage, CardDetailSkeleton, useSnackbar } from '../components';
 import { haptics } from '../utils/haptics';
 import type { CardDetailScreenProps } from '../navigation/types';
-import type { TCGCard } from '../types';
 
 export default function CardDetailScreen({ route }: CardDetailScreenProps) {
   const { productId, cardName, groupId } = route.params;

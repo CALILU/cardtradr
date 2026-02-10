@@ -144,7 +144,7 @@ export default function CollectionDetailScreen({ route, navigation }: Collection
               name={item.card_name}
               subtitle={`x${item.quantity}`}
               onPress={() => openEditDialog(item)}
-              onLongPress={() => handleRemove(item)
+              onLongPress={() => handleRemove(item)}
             />
           ) : (
             <SwipeableRow onDelete={() => handleRemove(item)}>
