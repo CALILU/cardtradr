@@ -4,7 +4,16 @@ import { Searchbar, List, Button, Text, Divider, IconButton } from 'react-native
 import { colors, spacing } from '../theme';
 import { useGames, useExpansions, useCards } from '../hooks';
 import { ErrorMessage, EmptyState, CardPreview, CardGridItem, CollectionListSkeleton, CardListSkeleton, CardGridSkeleton } from '../components';
+import { RarityFilter, SortSelector, ResultsCounter, SearchHistoryChips, ExtendedDataFilter } from '../components/search';
 import { useSettingsStore } from '../store/settings.store';
+import { useSearchStore } from '../store/search.store';
+import {
+  extractRarities,
+  extractExtendedDataOptions,
+  filterByRarity,
+  filterByExtendedData,
+  sortCards,
+} from '../utils/cardFilters';
 import type { SearchScreenProps } from '../navigation/types';
 import type { TCGGame, TCGExpansion } from '../types';
 
@@ -19,12 +28,31 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
   const cardViewMode = useSettingsStore((s) => s.cardViewMode);
   const toggleCardViewMode = useSettingsStore((s) => s.toggleCardViewMode);
 
-  // Queries (solo se ejecutan cuando enabled=true)
+  // Search store (persistido)
+  const sortOption = useSearchStore((s) => s.sortOption);
+  const setSortOption = useSearchStore((s) => s.setSortOption);
+  const searchHistory = useSearchStore((s) => s.searchHistory);
+  const addSearchTerm = useSearchStore((s) => s.addSearchTerm);
+  const clearSearchHistory = useSearchStore((s) => s.clearSearchHistory);
+
+  // Filtros locales (efimeros, se resetean al cambiar expansion)
+  const [selectedRarities, setSelectedRarities] = useState<string[]>([]);
+  const [extendedFilters, setExtendedFilters] = useState<Record<string, string[]>>({});
+  const [showFilters, setShowFilters] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+
+  // Queries
   const gamesQuery = useGames();
   const expansionsQuery = useExpansions(selectedGame?.categoryId ?? 0, page);
   const cardsQuery = useCards(selectedExpansion?.groupId ?? 0, page);
 
-  // Filtrar resultados por texto de busqueda
+  // Datos para filtros (memoizados)
+  const allCards = cardsQuery.data?.cards ?? [];
+
+  const availableRarities = useMemo(() => extractRarities(allCards), [allCards]);
+  const availableExtendedFilters = useMemo(() => extractExtendedDataOptions(allCards), [allCards]);
+
+  // Pipeline de filtrado: texto → rareza → extendedData → sort
   const filteredGames = useMemo(() => {
     if (!gamesQuery.data || !search.trim()) return gamesQuery.data ?? [];
     const q = search.toLowerCase();
@@ -39,13 +67,31 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
   }, [expansionsQuery.data, search]);
 
   const filteredCards = useMemo(() => {
-    const items = cardsQuery.data?.cards ?? [];
-    if (!search.trim()) return items;
-    const q = search.toLowerCase();
-    return items.filter((c) => (c.cleanName || c.name).toLowerCase().includes(q));
-  }, [cardsQuery.data, search]);
+    let items = allCards;
 
-  // Navegacion entre niveles
+    // Etapa 1: texto
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      items = items.filter((c) => (c.cleanName || c.name).toLowerCase().includes(q));
+    }
+
+    // Etapa 2: rareza
+    if (selectedRarities.length > 0) {
+      items = filterByRarity(items, selectedRarities);
+    }
+
+    // Etapa 3: extended data
+    if (Object.values(extendedFilters).some((v) => v.length > 0)) {
+      items = filterByExtendedData(items, extendedFilters);
+    }
+
+    // Etapa 4: sort
+    items = sortCards(items, sortOption);
+
+    return items;
+  }, [allCards, search, selectedRarities, extendedFilters, sortOption]);
+
+  // Navegacion
   function selectGame(game: TCGGame) {
     setSelectedGame(game);
     setLevel('expansions');
@@ -58,12 +104,18 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
     setLevel('cards');
     setSearch('');
     setPage(1);
+    setSelectedRarities([]);
+    setExtendedFilters({});
+    setShowFilters(false);
   }
 
   function goBack() {
     if (level === 'cards') {
       setLevel('expansions');
       setSelectedExpansion(null);
+      setSelectedRarities([]);
+      setExtendedFilters({});
+      setShowFilters(false);
     } else if (level === 'expansions') {
       setLevel('games');
       setSelectedGame(null);
@@ -80,15 +132,15 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
     return parts;
   }, [selectedGame, selectedExpansion]);
 
+  const hasActiveFilters = selectedRarities.length > 0 || Object.values(extendedFilters).some((v) => v.length > 0);
+
   return (
     <View style={styles.container}>
       {/* Breadcrumb */}
       <View style={styles.breadcrumb}>
         {breadcrumb.map((part, i) => (
           <React.Fragment key={i}>
-            {i > 0 && (
-              <Text style={styles.breadcrumbSep}> &gt; </Text>
-            )}
+            {i > 0 && <Text style={styles.breadcrumbSep}> &gt; </Text>}
             <Text
               style={[styles.breadcrumbText, i === breadcrumb.length - 1 && styles.breadcrumbActive]}
               numberOfLines={1}
@@ -104,10 +156,24 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
         placeholder={`Buscar en ${breadcrumb[breadcrumb.length - 1]}...`}
         value={search}
         onChangeText={setSearch}
+        onFocus={() => setIsSearchFocused(true)}
+        onBlur={() => setIsSearchFocused(false)}
+        onSubmitEditing={() => {
+          if (search.trim()) addSearchTerm(search.trim());
+        }}
         style={styles.searchbar}
       />
 
-      {/* Boton volver + toggle grid */}
+      {/* Historial de busqueda */}
+      {level === 'cards' && isSearchFocused && !search.trim() && (
+        <SearchHistoryChips
+          history={searchHistory}
+          onSelect={(term) => setSearch(term)}
+          onClear={clearSearchHistory}
+        />
+      )}
+
+      {/* Toolbar */}
       <View style={styles.toolbar}>
         {level !== 'games' ? (
           <Button icon="arrow-left" mode="text" onPress={goBack} compact>
@@ -116,16 +182,62 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
         ) : (
           <View />
         )}
-        {level === 'cards' && (
-          <IconButton
-            icon={cardViewMode === 'list' ? 'view-grid' : 'view-list'}
-            size={22}
-            onPress={toggleCardViewMode}
-          />
-        )}
+        <View style={styles.toolbarRight}>
+          {level === 'cards' && !cardsQuery.isLoading && (
+            <ResultsCounter filteredCount={filteredCards.length} totalCount={allCards.length} />
+          )}
+          {level === 'cards' && (
+            <>
+              <IconButton
+                icon="filter-variant"
+                size={22}
+                onPress={() => setShowFilters((v) => !v)}
+                iconColor={hasActiveFilters ? colors.primary : undefined}
+              />
+              <IconButton
+                icon={cardViewMode === 'list' ? 'view-grid' : 'view-list'}
+                size={22}
+                onPress={toggleCardViewMode}
+              />
+            </>
+          )}
+        </View>
       </View>
 
-      {/* Contenido segun nivel */}
+      {/* Filtros (colapsable) */}
+      {level === 'cards' && showFilters && (
+        <View style={styles.filtersSection}>
+          <View style={styles.filterRow}>
+            <SortSelector currentSort={sortOption} onSortChange={setSortOption} />
+          </View>
+          <RarityFilter
+            availableRarities={availableRarities}
+            selectedRarities={selectedRarities}
+            onSelectionChange={setSelectedRarities}
+          />
+          <ExtendedDataFilter
+            availableFilters={availableExtendedFilters}
+            activeFilters={extendedFilters}
+            onFiltersChange={setExtendedFilters}
+          />
+          {hasActiveFilters && (
+            <Button
+              mode="text"
+              compact
+              icon="close"
+              onPress={() => {
+                setSelectedRarities([]);
+                setExtendedFilters({});
+              }}
+              style={styles.clearFilters}
+            >
+              Limpiar filtros
+            </Button>
+          )}
+        </View>
+      )}
+
+      {/* Contenido */}
       {level === 'games' && renderGames()}
       {level === 'expansions' && renderExpansions()}
       {level === 'cards' && renderCards()}
@@ -204,7 +316,7 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
     if (cardsQuery.error)
       return <ErrorMessage message={cardsQuery.error.message} onRetry={() => cardsQuery.refetch()} />;
     if (filteredCards.length === 0)
-      return <EmptyState icon="magnify" title="Sin cartas" />;
+      return <EmptyState icon="magnify" title="Sin cartas" subtitle={hasActiveFilters ? 'Prueba ajustando los filtros' : undefined} />;
 
     const totalPages = cardsQuery.data?.totalPages ?? 1;
     const isGrid = cardViewMode === 'grid';
@@ -217,12 +329,15 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
         numColumns={isGrid ? 2 : 1}
         columnWrapperStyle={isGrid ? styles.gridRow : undefined}
         contentContainerStyle={isGrid ? styles.gridContainer : undefined}
-        renderItem={({ item }) =>
-          isGrid ? (
+        renderItem={({ item }) => {
+          const variantsCount = item.skus?.length ?? 0;
+
+          return isGrid ? (
             <CardGridItem
               imageUrl={item.image}
               name={item.cleanName || item.name}
               subtitle={item.rarity}
+              variantsCount={variantsCount > 1 ? variantsCount : undefined}
               onPress={() =>
                 navigation.navigate('CardDetail', {
                   productId: item.productId,
@@ -242,8 +357,8 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
                 })
               }
             />
-          )
-        }
+          );
+        }}
         ListFooterComponent={
           totalPages > page ? (
             <Button onPress={() => setPage((p) => p + 1)} style={styles.loadMore}>
@@ -289,6 +404,25 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: spacing.xs,
+  },
+  toolbarRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  filtersSection: {
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+    paddingBottom: spacing.xs,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+  },
+  clearFilters: {
+    alignSelf: 'flex-start',
+    marginLeft: spacing.sm,
   },
   loadMore: {
     margin: spacing.md,

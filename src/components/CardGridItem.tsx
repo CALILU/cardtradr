@@ -7,11 +7,12 @@ interface CardGridItemProps {
   imageUrl: string | null;
   name: string;
   subtitle?: string;
+  variantsCount?: number;
   onPress?: () => void;
   onLongPress?: () => void;
 }
 
-export function CardGridItem({ imageUrl, name, subtitle, onPress, onLongPress }: CardGridItemProps) {
+export function CardGridItem({ imageUrl, name, subtitle, variantsCount, onPress, onLongPress }: CardGridItemProps) {
   const { width } = useWindowDimensions();
   const itemWidth = (width - spacing.sm * 3) / 2;
   const imageHeight = itemWidth * 1.4;
@@ -23,17 +24,24 @@ export function CardGridItem({ imageUrl, name, subtitle, onPress, onLongPress }:
       onPress={onPress}
       onLongPress={onLongPress}
     >
-      {imageUrl ? (
-        <Image
-          source={{ uri: imageUrl }}
-          style={[styles.image, { width: itemWidth - 2, height: imageHeight }]}
-          resizeMode="contain"
-        />
-      ) : (
-        <View style={[styles.placeholder, { width: itemWidth - 2, height: imageHeight }]}>
-          <Text style={styles.placeholderText}>Sin imagen</Text>
-        </View>
-      )}
+      <View>
+        {imageUrl ? (
+          <Image
+            source={{ uri: imageUrl }}
+            style={[styles.image, { width: itemWidth - 2, height: imageHeight }]}
+            resizeMode="contain"
+          />
+        ) : (
+          <View style={[styles.placeholder, { width: itemWidth - 2, height: imageHeight }]}>
+            <Text style={styles.placeholderText}>Sin imagen</Text>
+          </View>
+        )}
+        {variantsCount != null && variantsCount > 0 && (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{variantsCount}</Text>
+          </View>
+        )}
+      </View>
       <Card.Content style={styles.content}>
         <Text variant="labelMedium" numberOfLines={1}>
           {name}
@@ -75,5 +83,22 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     color: colors.textSecondary,
+  },
+  badge: {
+    position: 'absolute',
+    top: spacing.xs,
+    right: spacing.xs,
+    backgroundColor: colors.primary,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    color: colors.textOnPrimary,
+    fontSize: 10,
+    fontWeight: '700',
   },
 });
