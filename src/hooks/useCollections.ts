@@ -102,3 +102,12 @@ export function useCollectionStats() {
     queryFn: collectionService.getCollectionStats,
   });
 }
+
+/** Estadisticas avanzadas: valor, distribucion TCG, top cartas */
+export function useAdvancedStats() {
+  return useQuery({
+    queryKey: ['advanced-stats'],
+    queryFn: collectionService.getAdvancedStats,
+    staleTime: 5 * 60 * 1000,
+  });
+}

@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { View, FlatList, RefreshControl, StyleSheet } from 'react-native';
-import { Searchbar, List, Chip, Button, Text, Divider } from 'react-native-paper';
+import { Searchbar, List, Button, Text, Divider, IconButton } from 'react-native-paper';
 import { colors, spacing } from '../theme';
 import { useGames, useExpansions, useCards } from '../hooks';
-import { LoadingScreen, ErrorMessage, EmptyState, CardPreview } from '../components';
+import { LoadingScreen, ErrorMessage, EmptyState, CardPreview, CardGridItem } from '../components';
+import { useSettingsStore } from '../store/settings.store';
 import type { SearchScreenProps } from '../navigation/types';
 import type { TCGGame, TCGExpansion } from '../types';
 
@@ -15,6 +16,8 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
   const [selectedExpansion, setSelectedExpansion] = useState<TCGExpansion | null>(null);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const cardViewMode = useSettingsStore((s) => s.cardViewMode);
+  const toggleCardViewMode = useSettingsStore((s) => s.toggleCardViewMode);
 
   // Queries (solo se ejecutan cuando enabled=true)
   const gamesQuery = useGames();
@@ -104,12 +107,23 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
         style={styles.searchbar}
       />
 
-      {/* Boton volver */}
-      {level !== 'games' && (
-        <Button icon="arrow-left" mode="text" onPress={goBack} style={styles.backButton}>
-          Volver
-        </Button>
-      )}
+      {/* Boton volver + toggle grid */}
+      <View style={styles.toolbar}>
+        {level !== 'games' ? (
+          <Button icon="arrow-left" mode="text" onPress={goBack} compact>
+            Volver
+          </Button>
+        ) : (
+          <View />
+        )}
+        {level === 'cards' && (
+          <IconButton
+            icon={cardViewMode === 'list' ? 'view-grid' : 'view-list'}
+            size={22}
+            onPress={toggleCardViewMode}
+          />
+        )}
+      </View>
 
       {/* Contenido segun nivel */}
       {level === 'games' && renderGames()}
@@ -193,23 +207,43 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
       return <EmptyState icon="magnify" title="Sin cartas" />;
 
     const totalPages = cardsQuery.data?.totalPages ?? 1;
+    const isGrid = cardViewMode === 'grid';
 
     return (
       <FlatList
+        key={cardViewMode}
         data={filteredCards}
         keyExtractor={(item) => String(item.productId)}
-        renderItem={({ item }) => (
-          <CardPreview
-            card={item}
-            onPress={() =>
-              navigation.navigate('CardDetail', {
-                productId: item.productId,
-                cardName: item.cleanName || item.name,
-                groupId: item.groupId,
-              })
-            }
-          />
-        )}
+        numColumns={isGrid ? 2 : 1}
+        columnWrapperStyle={isGrid ? styles.gridRow : undefined}
+        contentContainerStyle={isGrid ? styles.gridContainer : undefined}
+        renderItem={({ item }) =>
+          isGrid ? (
+            <CardGridItem
+              imageUrl={item.image}
+              name={item.cleanName || item.name}
+              subtitle={item.rarity}
+              onPress={() =>
+                navigation.navigate('CardDetail', {
+                  productId: item.productId,
+                  cardName: item.cleanName || item.name,
+                  groupId: item.groupId,
+                })
+              }
+            />
+          ) : (
+            <CardPreview
+              card={item}
+              onPress={() =>
+                navigation.navigate('CardDetail', {
+                  productId: item.productId,
+                  cardName: item.cleanName || item.name,
+                  groupId: item.groupId,
+                })
+              }
+            />
+          )
+        }
         ListFooterComponent={
           totalPages > page ? (
             <Button onPress={() => setPage((p) => p + 1)} style={styles.loadMore}>
@@ -250,11 +284,20 @@ const styles = StyleSheet.create({
   searchbar: {
     margin: spacing.sm,
   },
-  backButton: {
-    alignSelf: 'flex-start',
-    marginLeft: spacing.xs,
+  toolbar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xs,
   },
   loadMore: {
     margin: spacing.md,
+  },
+  gridRow: {
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.sm,
+  },
+  gridContainer: {
+    paddingTop: spacing.sm,
   },
 });

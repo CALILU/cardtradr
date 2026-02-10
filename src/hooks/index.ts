@@ -9,6 +9,7 @@ export {
   useAddCardToCollection,
   useRemoveCardFromCollection,
   useCollectionStats,
+  useAdvancedStats,
 } from './useCollections';
 export {
   useWishlist,

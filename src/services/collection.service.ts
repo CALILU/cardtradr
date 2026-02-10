@@ -133,3 +133,58 @@ export async function getCollectionStats(): Promise<{
     totalCards: cards.count ?? 0,
   };
 }
+
+// ============================================================
+// Advanced Stats
+// ============================================================
+
+export interface AdvancedStats {
+  totalValue: number;
+  tcgDistribution: Array<{ tcg_type: string; count: number }>;
+  topCards: Array<{
+    card_name: string;
+    cached_price: number;
+    cached_image_url: string | null;
+    quantity: number;
+  }>;
+}
+
+/** Estadisticas avanzadas: valor total, distribucion TCG, top 5 cartas */
+export async function getAdvancedStats(): Promise<AdvancedStats> {
+  const { data: cards, error } = await supabase
+    .from('collection_cards')
+    .select('card_name, cached_price, cached_image_url, quantity, tcg_type')
+    .order('cached_price', { ascending: false });
+
+  if (error) throw error;
+
+  const allCards = cards ?? [];
+
+  // Valor total
+  const totalValue = allCards.reduce(
+    (sum, c) => sum + (c.cached_price ?? 0) * (c.quantity ?? 1),
+    0,
+  );
+
+  // Distribucion por TCG
+  const tcgMap = new Map<string, number>();
+  allCards.forEach((c) => {
+    tcgMap.set(c.tcg_type, (tcgMap.get(c.tcg_type) ?? 0) + (c.quantity ?? 1));
+  });
+  const tcgDistribution = Array.from(tcgMap.entries())
+    .map(([tcg_type, count]) => ({ tcg_type, count }))
+    .sort((a, b) => b.count - a.count);
+
+  // Top 5 mas valiosas
+  const topCards = allCards
+    .filter((c) => c.cached_price != null && c.cached_price > 0)
+    .slice(0, 5)
+    .map((c) => ({
+      card_name: c.card_name,
+      cached_price: c.cached_price!,
+      cached_image_url: c.cached_image_url,
+      quantity: c.quantity,
+    }));
+
+  return { totalValue, tcgDistribution, topCards };
+}

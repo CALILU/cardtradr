@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useLayoutEffect } from 'react';
 import { FlatList, StyleSheet, Image, View, Alert, RefreshControl } from 'react-native';
 import {
   List,
@@ -12,7 +12,9 @@ import {
 } from 'react-native-paper';
 import { colors, spacing } from '../theme';
 import { useCollectionCards, useRemoveCardFromCollection, useUpdateCollectionCard } from '../hooks';
-import { LoadingScreen, ErrorMessage, EmptyState } from '../components';
+import { LoadingScreen, ErrorMessage, EmptyState, CardGridItem } from '../components';
+import { useSettingsStore } from '../store/settings.store';
+import { exportCollectionToCsv } from '../utils/exportCsv';
 import type { CollectionDetailScreenProps } from '../navigation/types';
 import type { CollectionCard } from '../types';
 
@@ -24,11 +26,43 @@ const CONDITION_OPTIONS = [
   { value: 'damaged', label: 'DMG' },
 ];
 
-export default function CollectionDetailScreen({ route }: CollectionDetailScreenProps) {
+export default function CollectionDetailScreen({ route, navigation }: CollectionDetailScreenProps) {
   const { collectionId, collectionName } = route.params;
   const cardsQuery = useCollectionCards(collectionId);
   const removeMutation = useRemoveCardFromCollection();
   const updateMutation = useUpdateCollectionCard();
+  const cardViewMode = useSettingsStore((s) => s.cardViewMode);
+  const toggleCardViewMode = useSettingsStore((s) => s.toggleCardViewMode);
+
+  // Header: export + grid toggle
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <View style={{ flexDirection: 'row' }}>
+          <IconButton
+            icon={cardViewMode === 'list' ? 'view-grid' : 'view-list'}
+            size={22}
+            onPress={toggleCardViewMode}
+          />
+          <IconButton
+            icon="export-variant"
+            size={22}
+            onPress={handleExport}
+            disabled={!cardsQuery.data?.length}
+          />
+        </View>
+      ),
+    });
+  }, [navigation, cardsQuery.data, cardViewMode]);
+
+  async function handleExport() {
+    if (!cardsQuery.data) return;
+    try {
+      await exportCollectionToCsv(collectionName, cardsQuery.data);
+    } catch {
+      Alert.alert('Error', 'No se pudo exportar la coleccion');
+    }
+  }
 
   // Edit dialog
   const [editCard, setEditCard] = useState<CollectionCard | null>(null);
@@ -76,39 +110,54 @@ export default function CollectionDetailScreen({ route }: CollectionDetailScreen
   if (cardsQuery.error)
     return <ErrorMessage message={cardsQuery.error.message} onRetry={() => cardsQuery.refetch()} />;
 
+  const isGrid = cardViewMode === 'grid';
+
   return (
     <View style={styles.container}>
       <FlatList
+        key={cardViewMode}
         contentContainerStyle={cardsQuery.data?.length === 0 ? styles.emptyContainer : styles.list}
         data={cardsQuery.data}
         keyExtractor={(item) => item.id}
+        numColumns={isGrid ? 2 : 1}
+        columnWrapperStyle={isGrid ? styles.gridRow : undefined}
         refreshControl={
           <RefreshControl
             refreshing={cardsQuery.isRefetching}
             onRefresh={() => cardsQuery.refetch()}
           />
         }
-        renderItem={({ item }) => (
-          <List.Item
-            title={item.card_name}
-            description={`x${item.quantity} - ${item.condition.replace(/_/g, ' ')}`}
-            onPress={() => openEditDialog(item)}
-            left={() =>
-              item.cached_image_url ? (
-                <Image source={{ uri: item.cached_image_url }} style={styles.thumbnail} />
-              ) : (
-                <View style={styles.placeholderThumb} />
-              )
-            }
-            right={() => (
-              <IconButton
-                icon="delete-outline"
-                size={20}
-                onPress={() => handleRemove(item.id, item.card_name)}
-              />
-            )}
-          />
-        )}
+        renderItem={({ item }) =>
+          isGrid ? (
+            <CardGridItem
+              imageUrl={item.cached_image_url}
+              name={item.card_name}
+              subtitle={`x${item.quantity}`}
+              onPress={() => openEditDialog(item)}
+              onLongPress={() => handleRemove(item.id, item.card_name)}
+            />
+          ) : (
+            <List.Item
+              title={item.card_name}
+              description={`x${item.quantity} - ${item.condition.replace(/_/g, ' ')}`}
+              onPress={() => openEditDialog(item)}
+              left={() =>
+                item.cached_image_url ? (
+                  <Image source={{ uri: item.cached_image_url }} style={styles.thumbnail} />
+                ) : (
+                  <View style={styles.placeholderThumb} />
+                )
+              }
+              right={() => (
+                <IconButton
+                  icon="delete-outline"
+                  size={20}
+                  onPress={() => handleRemove(item.id, item.card_name)}
+                />
+              )}
+            />
+          )
+        }
         ListEmptyComponent={
           <EmptyState
             icon="cards-outline"
@@ -198,5 +247,9 @@ const styles = StyleSheet.create({
   },
   segmented: {
     marginBottom: spacing.md,
+  },
+  gridRow: {
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.sm,
   },
 });
