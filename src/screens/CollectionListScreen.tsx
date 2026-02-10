@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FlatList, RefreshControl, Alert, StyleSheet } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet } from 'react-native';
 import {
   Card,
   Text,
@@ -13,7 +13,8 @@ import {
 } from 'react-native-paper';
 import { colors, spacing } from '../theme';
 import { useCollections, useCreateCollection, useUpdateCollection, useDeleteCollection } from '../hooks';
-import { LoadingScreen, ErrorMessage, EmptyState } from '../components';
+import { ErrorMessage, EmptyState, CollectionListSkeleton, ConfirmDialog, useSnackbar, SwipeableRow } from '../components';
+import { haptics } from '../utils/haptics';
 import type { CollectionListScreenProps } from '../navigation/types';
 import type { Collection } from '../types';
 
@@ -24,6 +25,10 @@ export default function CollectionListScreen({ navigation }: CollectionListScree
   const createMutation = useCreateCollection();
   const updateMutation = useUpdateCollection();
   const deleteMutation = useDeleteCollection();
+  const { showSnackbar } = useSnackbar();
+
+  // Dialog eliminar (reemplaza Alert.alert)
+  const [deleteTarget, setDeleteTarget] = useState<Collection | null>(null);
 
   // Dialog crear coleccion
   const [showDialog, setShowDialog] = useState(false);
@@ -44,6 +49,8 @@ export default function CollectionListScreen({ navigation }: CollectionListScree
       { name: newName.trim(), tcg_type: newTcg },
       {
         onSuccess: () => {
+          haptics.success();
+          showSnackbar({ text: 'Coleccion creada', type: 'success' });
           setShowDialog(false);
           setNewName('');
           setNewTcg('pokemon');
@@ -75,21 +82,20 @@ export default function CollectionListScreen({ navigation }: CollectionListScree
 
   function handleDelete(collection: Collection) {
     setMenuVisible(null);
-    Alert.alert(
-      'Eliminar coleccion',
-      `Se eliminara "${collection.name}" y todas sus cartas. Esta accion no se puede deshacer.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: () => deleteMutation.mutate(collection.id),
-        },
-      ],
-    );
+    setDeleteTarget(collection);
   }
 
-  if (collectionsQuery.isLoading) return <LoadingScreen message="Cargando colecciones..." />;
+  function confirmDelete() {
+    if (!deleteTarget) return;
+    deleteMutation.mutate(deleteTarget.id, {
+      onSuccess: () => {
+        showSnackbar({ text: 'Coleccion eliminada', type: 'success' });
+        setDeleteTarget(null);
+      },
+    });
+  }
+
+  if (collectionsQuery.isLoading) return <CollectionListSkeleton />;
   if (collectionsQuery.error)
     return (
       <ErrorMessage
@@ -114,27 +120,29 @@ export default function CollectionListScreen({ navigation }: CollectionListScree
           />
         }
         renderItem={({ item }) => (
-          <Card
-            style={styles.card}
-            mode="elevated"
-            onPress={() =>
-              navigation.navigate('CollectionDetail', {
-                collectionId: item.id,
-                collectionName: item.name,
-              })
-            }
-            onLongPress={(e) => handleLongPress(item, e)}
-          >
-            <Card.Title
-              title={item.name}
-              subtitle={item.description || undefined}
-              right={() => (
-                <Chip style={styles.tcgChip} compact>
-                  {item.tcg_type}
-                </Chip>
-              )}
-            />
-          </Card>
+          <SwipeableRow onDelete={() => handleDelete(item)}>
+            <Card
+              style={styles.card}
+              mode="elevated"
+              onPress={() =>
+                navigation.navigate('CollectionDetail', {
+                  collectionId: item.id,
+                  collectionName: item.name,
+                })
+              }
+              onLongPress={(e) => handleLongPress(item, e)}
+            >
+              <Card.Title
+                title={item.name}
+                subtitle={item.description || undefined}
+                right={() => (
+                  <Chip style={styles.tcgChip} compact>
+                    {item.tcg_type}
+                  </Chip>
+                )}
+              />
+            </Card>
+          </SwipeableRow>
         )}
         ListEmptyComponent={
           <EmptyState
@@ -225,6 +233,16 @@ export default function CollectionListScreen({ navigation }: CollectionListScree
           </Dialog.Actions>
         </Dialog>
       </Portal>
+
+      {/* Dialog confirmar eliminacion */}
+      <ConfirmDialog
+        visible={!!deleteTarget}
+        title="Eliminar coleccion"
+        message={`Se eliminara "${deleteTarget?.name}" y todas sus cartas. Esta accion no se puede deshacer.`}
+        onConfirm={confirmDelete}
+        onDismiss={() => setDeleteTarget(null)}
+        loading={deleteMutation.isPending}
+      />
 
       {/* Dialog editar nombre */}
       <Portal>

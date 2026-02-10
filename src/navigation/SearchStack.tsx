@@ -19,7 +19,10 @@ export default function SearchStack() {
       <Stack.Screen
         name="CardDetail"
         component={CardDetailScreen}
-        options={({ route }) => ({ title: route.params.cardName })}
+        options={({ route }) => ({
+          title: route.params.cardName,
+          animation: 'slide_from_bottom',
+        })}
       />
     </Stack.Navigator>
   );

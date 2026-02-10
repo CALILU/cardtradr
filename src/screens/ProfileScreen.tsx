@@ -1,5 +1,5 @@
-import React from 'react';
-import { ScrollView, StyleSheet, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { ScrollView, StyleSheet } from 'react-native';
 import { List, Button, Divider, Text, Switch } from 'react-native-paper';
 import { colors, spacing } from '../theme';
 import { useAuthStore } from '../store/auth.store';
@@ -7,31 +7,35 @@ import { useSettingsStore } from '../store/settings.store';
 import { useApiUsage } from '../hooks';
 import { tcgapis } from '../api/tcgapis.client';
 import * as tcgService from '../services/tcg.service';
+import { ConfirmDialog, useSnackbar } from '../components';
+import { haptics } from '../utils/haptics';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuthStore();
   const { isDarkMode, toggleDarkMode } = useSettingsStore();
   const usage = useApiUsage();
+  const { showSnackbar } = useSnackbar();
+
+  const [showClearCacheDialog, setShowClearCacheDialog] = useState(false);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
   function handleClearCache() {
-    Alert.alert('Limpiar cache', 'Se eliminaran todos los datos cacheados de TCGAPIs.', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Limpiar',
-        style: 'destructive',
-        onPress: async () => {
-          await tcgapis.clearCache();
-          Alert.alert('Cache limpiado');
-        },
-      },
-    ]);
+    setShowClearCacheDialog(true);
+  }
+
+  async function confirmClearCache() {
+    await tcgapis.clearCache();
+    setShowClearCacheDialog(false);
+    showSnackbar({ text: 'Cache limpiado correctamente', type: 'success' });
   }
 
   function handleSignOut() {
-    Alert.alert('Cerrar sesion', 'Seguro que quieres salir?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Salir', style: 'destructive', onPress: signOut },
-    ]);
+    setShowLogoutDialog(true);
+  }
+
+  function handleToggleDarkMode() {
+    haptics.selection();
+    toggleDarkMode();
   }
 
   return (
@@ -93,7 +97,7 @@ export default function ProfileScreen() {
           title="Modo oscuro"
           description={isDarkMode ? 'Activado' : 'Desactivado'}
           left={(props) => <List.Icon {...props} icon="theme-light-dark" />}
-          right={() => <Switch value={isDarkMode} onValueChange={toggleDarkMode} />}
+          right={() => <Switch value={isDarkMode} onValueChange={handleToggleDarkMode} />}
         />
         <List.Item
           title="Limpiar cache TCGAPIs"
@@ -112,6 +116,27 @@ export default function ProfileScreen() {
       >
         Cerrar Sesion
       </Button>
+
+      <ConfirmDialog
+        visible={showClearCacheDialog}
+        title="Limpiar cache"
+        message="Se eliminaran todos los datos cacheados de TCGAPIs."
+        confirmLabel="Limpiar"
+        onConfirm={confirmClearCache}
+        onDismiss={() => setShowClearCacheDialog(false)}
+      />
+
+      <ConfirmDialog
+        visible={showLogoutDialog}
+        title="Cerrar sesion"
+        message="Seguro que quieres salir?"
+        confirmLabel="Salir"
+        onConfirm={() => {
+          setShowLogoutDialog(false);
+          signOut();
+        }}
+        onDismiss={() => setShowLogoutDialog(false)}
+      />
     </ScrollView>
   );
 }

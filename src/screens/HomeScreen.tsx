@@ -4,7 +4,7 @@ import { Card, Text, Icon, ProgressBar, List } from 'react-native-paper';
 import { colors, spacing } from '../theme';
 import { useAuthStore } from '../store/auth.store';
 import { useCollectionStats, useWishlistStats, useApiUsage, useAdvancedStats } from '../hooks';
-import { ErrorMessage } from '../components';
+import { ErrorMessage, HomeScreenSkeleton } from '../components';
 import * as tcgService from '../services/tcg.service';
 
 const TCG_COLORS: Record<string, string> = {
@@ -36,6 +36,9 @@ export default function HomeScreen() {
     usage.refetch();
     advancedStats.refetch();
   }
+
+  const isInitialLoading = stats.isLoading && !stats.data;
+  if (isInitialLoading) return <HomeScreenSkeleton />;
 
   if (stats.error) {
     return <ErrorMessage message={stats.error.message} onRetry={() => stats.refetch()} />;

@@ -1,5 +1,5 @@
 import React, { useState, useLayoutEffect } from 'react';
-import { FlatList, StyleSheet, Image, View, Alert, RefreshControl } from 'react-native';
+import { FlatList, StyleSheet, Image, View, RefreshControl } from 'react-native';
 import {
   List,
   Text,
@@ -12,7 +12,8 @@ import {
 } from 'react-native-paper';
 import { colors, spacing } from '../theme';
 import { useCollectionCards, useRemoveCardFromCollection, useUpdateCollectionCard } from '../hooks';
-import { LoadingScreen, ErrorMessage, EmptyState, CardGridItem } from '../components';
+import { ErrorMessage, EmptyState, CardGridItem, CardListSkeleton, CardGridSkeleton, ConfirmDialog, useSnackbar, SwipeableRow } from '../components';
+import { haptics } from '../utils/haptics';
 import { useSettingsStore } from '../store/settings.store';
 import { exportCollectionToCsv } from '../utils/exportCsv';
 import type { CollectionDetailScreenProps } from '../navigation/types';
@@ -31,6 +32,7 @@ export default function CollectionDetailScreen({ route, navigation }: Collection
   const cardsQuery = useCollectionCards(collectionId);
   const removeMutation = useRemoveCardFromCollection();
   const updateMutation = useUpdateCollectionCard();
+  const { showSnackbar } = useSnackbar();
   const cardViewMode = useSettingsStore((s) => s.cardViewMode);
   const toggleCardViewMode = useSettingsStore((s) => s.toggleCardViewMode);
 
@@ -59,10 +61,14 @@ export default function CollectionDetailScreen({ route, navigation }: Collection
     if (!cardsQuery.data) return;
     try {
       await exportCollectionToCsv(collectionName, cardsQuery.data);
+      showSnackbar({ text: 'Coleccion exportada', type: 'success' });
     } catch {
-      Alert.alert('Error', 'No se pudo exportar la coleccion');
+      showSnackbar({ text: 'No se pudo exportar la coleccion', type: 'error' });
     }
   }
+
+  // Remove dialog
+  const [removeTarget, setRemoveTarget] = useState<CollectionCard | null>(null);
 
   // Edit dialog
   const [editCard, setEditCard] = useState<CollectionCard | null>(null);
@@ -70,18 +76,22 @@ export default function CollectionDetailScreen({ route, navigation }: Collection
   const [editCondition, setEditCondition] = useState('near_mint');
   const [editNotes, setEditNotes] = useState('');
 
-  function handleRemove(cardId: string, cardName: string) {
-    Alert.alert('Eliminar carta', `Quieres eliminar "${cardName}" de ${collectionName}?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Eliminar',
-        style: 'destructive',
-        onPress: () => removeMutation.mutate(cardId),
+  function handleRemove(card: CollectionCard) {
+    setRemoveTarget(card);
+  }
+
+  function confirmRemove() {
+    if (!removeTarget) return;
+    removeMutation.mutate(removeTarget.id, {
+      onSuccess: () => {
+        showSnackbar({ text: 'Carta eliminada', type: 'success' });
+        setRemoveTarget(null);
       },
-    ]);
+    });
   }
 
   function openEditDialog(card: CollectionCard) {
+    haptics.medium();
     setEditCard(card);
     setEditQuantity(String(card.quantity));
     setEditCondition(card.condition);
@@ -106,7 +116,7 @@ export default function CollectionDetailScreen({ route, navigation }: Collection
     );
   }
 
-  if (cardsQuery.isLoading) return <LoadingScreen message="Cargando cartas..." />;
+  if (cardsQuery.isLoading) return cardViewMode === 'grid' ? <CardGridSkeleton /> : <CardListSkeleton />;
   if (cardsQuery.error)
     return <ErrorMessage message={cardsQuery.error.message} onRetry={() => cardsQuery.refetch()} />;
 
@@ -134,28 +144,23 @@ export default function CollectionDetailScreen({ route, navigation }: Collection
               name={item.card_name}
               subtitle={`x${item.quantity}`}
               onPress={() => openEditDialog(item)}
-              onLongPress={() => handleRemove(item.id, item.card_name)}
+              onLongPress={() => handleRemove(item)
             />
           ) : (
-            <List.Item
-              title={item.card_name}
-              description={`x${item.quantity} - ${item.condition.replace(/_/g, ' ')}`}
-              onPress={() => openEditDialog(item)}
-              left={() =>
-                item.cached_image_url ? (
-                  <Image source={{ uri: item.cached_image_url }} style={styles.thumbnail} />
-                ) : (
-                  <View style={styles.placeholderThumb} />
-                )
-              }
-              right={() => (
-                <IconButton
-                  icon="delete-outline"
-                  size={20}
-                  onPress={() => handleRemove(item.id, item.card_name)}
-                />
-              )}
-            />
+            <SwipeableRow onDelete={() => handleRemove(item)}>
+              <List.Item
+                title={item.card_name}
+                description={`x${item.quantity} - ${item.condition.replace(/_/g, ' ')}`}
+                onPress={() => openEditDialog(item)}
+                left={() =>
+                  item.cached_image_url ? (
+                    <Image source={{ uri: item.cached_image_url }} style={styles.thumbnail} />
+                  ) : (
+                    <View style={styles.placeholderThumb} />
+                  )
+                }
+              />
+            </SwipeableRow>
           )
         }
         ListEmptyComponent={
@@ -165,6 +170,16 @@ export default function CollectionDetailScreen({ route, navigation }: Collection
             subtitle="Busca cartas y agregalas a esta coleccion"
           />
         }
+      />
+
+      {/* Dialog confirmar eliminacion */}
+      <ConfirmDialog
+        visible={!!removeTarget}
+        title="Eliminar carta"
+        message={`Quieres eliminar "${removeTarget?.card_name}" de ${collectionName}?`}
+        onConfirm={confirmRemove}
+        onDismiss={() => setRemoveTarget(null)}
+        loading={removeMutation.isPending}
       />
 
       {/* Dialog editar carta */}

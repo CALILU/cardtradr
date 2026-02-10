@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, FlatList, RefreshControl, Alert, StyleSheet } from 'react-native';
+import { View, FlatList, RefreshControl, StyleSheet } from 'react-native';
 import {
   Text,
   Card,
@@ -13,7 +13,8 @@ import {
 } from 'react-native-paper';
 import { colors, spacing } from '../theme';
 import { useWishlist, useUpdateWishlistItem, useRemoveFromWishlist } from '../hooks';
-import { LoadingScreen, ErrorMessage, EmptyState } from '../components';
+import { ErrorMessage, EmptyState, WishlistSkeleton, ConfirmDialog, useSnackbar, SwipeableRow } from '../components';
+import { haptics } from '../utils/haptics';
 import type { WishlistItem } from '../types';
 
 const PRIORITY_LABELS: Record<number, string> = {
@@ -36,6 +37,10 @@ export default function WishlistScreen() {
   const wishlist = useWishlist();
   const updateMutation = useUpdateWishlistItem();
   const removeMutation = useRemoveFromWishlist();
+  const { showSnackbar } = useSnackbar();
+
+  // Delete dialog
+  const [deleteTarget, setDeleteTarget] = useState<WishlistItem | null>(null);
 
   // Edit dialog
   const [editItem, setEditItem] = useState<WishlistItem | null>(null);
@@ -43,7 +48,7 @@ export default function WishlistScreen() {
   const [editMaxPrice, setEditMaxPrice] = useState('');
   const [editNotes, setEditNotes] = useState('');
 
-  if (wishlist.isLoading) return <LoadingScreen message="Cargando wishlist..." />;
+  if (wishlist.isLoading) return <WishlistSkeleton />;
   if (wishlist.error)
     return <ErrorMessage message={wishlist.error.message} onRetry={() => wishlist.refetch()} />;
 
@@ -65,62 +70,66 @@ export default function WishlistScreen() {
           notes: editNotes || null,
         },
       },
-      { onSuccess: () => setEditItem(null) },
+      {
+        onSuccess: () => {
+          haptics.success();
+          setEditItem(null);
+        },
+      },
     );
   }
 
   function handleDelete(item: WishlistItem) {
-    Alert.alert('Eliminar', `Quitar "${item.card_name}" de la wishlist?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Eliminar',
-        style: 'destructive',
-        onPress: () => removeMutation.mutate(item.id),
+    setDeleteTarget(item);
+  }
+
+  function confirmDelete() {
+    if (!deleteTarget) return;
+    removeMutation.mutate(deleteTarget.id, {
+      onSuccess: () => {
+        showSnackbar({ text: 'Eliminada de wishlist', type: 'success' });
+        setDeleteTarget(null);
       },
-    ]);
+    });
   }
 
   function renderItem({ item }: { item: WishlistItem }) {
     return (
-      <Card style={styles.card} mode="elevated" onPress={() => openEditDialog(item)}>
-        <Card.Content style={styles.cardContent}>
-          {item.cached_image_url && (
-            <Card.Cover
-              source={{ uri: item.cached_image_url }}
-              style={styles.cardImage}
-              resizeMode="contain"
-            />
-          )}
-          <View style={styles.cardInfo}>
-            <Text variant="titleSmall" numberOfLines={2}>
-              {item.card_name}
-            </Text>
-            <Text variant="bodySmall" style={styles.tcgType}>
-              {item.tcg_type}
-            </Text>
-            <View style={styles.chipRow}>
-              <Chip
-                compact
-                textStyle={styles.chipText}
-                style={[styles.priorityChip, { backgroundColor: PRIORITY_COLORS[item.priority] + '20' }]}
-              >
-                {PRIORITY_LABELS[item.priority] || 'Normal'}
-              </Chip>
-              {item.max_price && (
-                <Chip compact icon="cash" textStyle={styles.chipText}>
-                  Max {item.max_price.toFixed(2)}
+      <SwipeableRow onDelete={() => handleDelete(item)}>
+        <Card style={styles.card} mode="elevated" onPress={() => openEditDialog(item)}>
+          <Card.Content style={styles.cardContent}>
+            {item.cached_image_url && (
+              <Card.Cover
+                source={{ uri: item.cached_image_url }}
+                style={styles.cardImage}
+                resizeMode="contain"
+              />
+            )}
+            <View style={styles.cardInfo}>
+              <Text variant="titleSmall" numberOfLines={2}>
+                {item.card_name}
+              </Text>
+              <Text variant="bodySmall" style={styles.tcgType}>
+                {item.tcg_type}
+              </Text>
+              <View style={styles.chipRow}>
+                <Chip
+                  compact
+                  textStyle={styles.chipText}
+                  style={[styles.priorityChip, { backgroundColor: PRIORITY_COLORS[item.priority] + '20' }]}
+                >
+                  {PRIORITY_LABELS[item.priority] || 'Normal'}
                 </Chip>
-              )}
+                {item.max_price && (
+                  <Chip compact icon="cash" textStyle={styles.chipText}>
+                    Max {item.max_price.toFixed(2)}
+                  </Chip>
+                )}
+              </View>
             </View>
-          </View>
-          <IconButton
-            icon="delete-outline"
-            iconColor={colors.danger}
-            size={20}
-            onPress={() => handleDelete(item)}
-          />
-        </Card.Content>
-      </Card>
+          </Card.Content>
+        </Card>
+      </SwipeableRow>
     );
   }
 
@@ -141,6 +150,16 @@ export default function WishlistScreen() {
             subtitle="Busca cartas y agregalas a tu lista de deseos"
           />
         }
+      />
+
+      {/* Dialog confirmar eliminacion */}
+      <ConfirmDialog
+        visible={!!deleteTarget}
+        title="Eliminar de wishlist"
+        message={`Quitar "${deleteTarget?.card_name}" de la wishlist?`}
+        onConfirm={confirmDelete}
+        onDismiss={() => setDeleteTarget(null)}
+        loading={removeMutation.isPending}
       />
 
       {/* Dialog editar item */}

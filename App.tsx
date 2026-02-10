@@ -7,6 +7,7 @@
 
 import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -16,6 +17,7 @@ import { setupAuthAutoRefresh } from './src/api/supabase.client';
 import { useAuthStore } from './src/store/auth.store';
 import { useSettingsStore } from './src/store/settings.store';
 import { RootNavigator } from './src/navigation';
+import { SnackbarProvider } from './src/components';
 
 // React Query con defaults conservadores para 100 calls/dia
 const queryClient = new QueryClient({
@@ -46,13 +48,17 @@ export default function App() {
   }, [initialize]);
 
   return (
-    <SafeAreaProvider>
-      <PaperProvider theme={isDarkMode ? darkTheme : lightTheme}>
-        <QueryClientProvider client={queryClient}>
-          <RootNavigator />
-          <StatusBar style={isDarkMode ? 'light' : 'dark'} />
-        </QueryClientProvider>
-      </PaperProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <PaperProvider theme={isDarkMode ? darkTheme : lightTheme}>
+          <QueryClientProvider client={queryClient}>
+            <SnackbarProvider>
+              <RootNavigator />
+              <StatusBar style={isDarkMode ? 'light' : 'dark'} />
+            </SnackbarProvider>
+          </QueryClientProvider>
+        </PaperProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

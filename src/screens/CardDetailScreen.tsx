@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, ScrollView, Image, StyleSheet } from 'react-native';
+import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
 import {
   Text,
   Button,
@@ -14,7 +15,8 @@ import {
 } from 'react-native-paper';
 import { colors, spacing } from '../theme';
 import { useCards, useCollections, useAddCardToCollection, useAddToWishlist } from '../hooks';
-import { LoadingScreen, ErrorMessage } from '../components';
+import { ErrorMessage, CardDetailSkeleton, useSnackbar } from '../components';
+import { haptics } from '../utils/haptics';
 import type { CardDetailScreenProps } from '../navigation/types';
 import type { TCGCard } from '../types';
 
@@ -36,8 +38,9 @@ export default function CardDetailScreen({ route }: CardDetailScreenProps) {
   const [wishlistPriority, setWishlistPriority] = useState('3');
   const [wishlistMaxPrice, setWishlistMaxPrice] = useState('');
   const addToWishlistMutation = useAddToWishlist();
+  const { showSnackbar } = useSnackbar();
 
-  if (cardsQuery.isLoading) return <LoadingScreen message="Cargando carta..." />;
+  if (cardsQuery.isLoading) return <CardDetailSkeleton />;
   if (cardsQuery.error)
     return <ErrorMessage message={cardsQuery.error.message} onRetry={() => cardsQuery.refetch()} />;
   if (!card) return <ErrorMessage message={`Carta "${cardName}" no encontrada`} />;
@@ -56,6 +59,8 @@ export default function CardDetailScreen({ route }: CardDetailScreenProps) {
       },
       {
         onSuccess: () => {
+          haptics.success();
+          showSnackbar({ text: 'Carta agregada a coleccion', type: 'success' });
           setShowDialog(false);
           setSelectedCollectionId('');
         },
@@ -67,68 +72,78 @@ export default function CardDetailScreen({ route }: CardDetailScreenProps) {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Imagen */}
       {card.image && (
-        <Image source={{ uri: card.image }} style={styles.image} resizeMode="contain" />
+        <Animated.View entering={FadeIn.duration(400)}>
+          <Image source={{ uri: card.image }} style={styles.image} resizeMode="contain" />
+        </Animated.View>
       )}
 
       {/* Info basica */}
-      <Text variant="headlineSmall" style={styles.name}>
-        {card.cleanName || card.name}
-      </Text>
+      <Animated.View entering={FadeInUp.delay(150).duration(350)}>
+        <Text variant="headlineSmall" style={styles.name}>
+          {card.cleanName || card.name}
+        </Text>
 
-      <View style={styles.chips}>
-        {card.rarity && <Chip icon="star">{card.rarity}</Chip>}
-        {card.number && <Chip icon="numeric">#{card.number}</Chip>}
-      </View>
+        <View style={styles.chips}>
+          {card.rarity && <Chip icon="star">{card.rarity}</Chip>}
+          {card.number && <Chip icon="numeric">#{card.number}</Chip>}
+        </View>
+      </Animated.View>
 
       {/* Datos extendidos */}
       {card.extendedData && card.extendedData.length > 0 && (
-        <Card style={styles.section} mode="elevated">
-          <Card.Title title="Detalles" />
-          <Card.Content>
-            {card.extendedData.map((ext, i) => (
-              <View key={i} style={styles.detailRow}>
-                <Text style={styles.detailLabel}>{ext.displayName || ext.name}</Text>
-                <Text>{ext.value}</Text>
-              </View>
-            ))}
-          </Card.Content>
-        </Card>
+        <Animated.View entering={FadeInUp.delay(300).duration(300)}>
+          <Card style={styles.section} mode="elevated">
+            <Card.Title title="Detalles" />
+            <Card.Content>
+              {card.extendedData.map((ext, i) => (
+                <View key={i} style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>{ext.displayName || ext.name}</Text>
+                  <Text>{ext.value}</Text>
+                </View>
+              ))}
+            </Card.Content>
+          </Card>
+        </Animated.View>
       )}
 
       {/* SKUs */}
       {card.skus && card.skus.length > 0 && (
-        <Card style={styles.section} mode="elevated">
-          <Card.Title title="Versiones disponibles" />
-          <Card.Content>
-            {card.skus.map((sku) => (
-              <View key={sku.skuId} style={styles.detailRow}>
-                <Text>
-                  {sku.condName} - {sku.printingName}
-                </Text>
-                <Text style={styles.detailLabel}>{sku.languageName}</Text>
-              </View>
-            ))}
-          </Card.Content>
-        </Card>
+        <Animated.View entering={FadeInUp.delay(300).duration(300)}>
+          <Card style={styles.section} mode="elevated">
+            <Card.Title title="Versiones disponibles" />
+            <Card.Content>
+              {card.skus.map((sku) => (
+                <View key={sku.skuId} style={styles.detailRow}>
+                  <Text>
+                    {sku.condName} - {sku.printingName}
+                  </Text>
+                  <Text style={styles.detailLabel}>{sku.languageName}</Text>
+                </View>
+              ))}
+            </Card.Content>
+          </Card>
+        </Animated.View>
       )}
 
       {/* Botones agregar */}
-      <Button
-        mode="contained"
-        icon="plus"
-        onPress={() => setShowDialog(true)}
-        style={styles.addButton}
-      >
-        Agregar a Coleccion
-      </Button>
-      <Button
-        mode="outlined"
-        icon="heart-outline"
-        onPress={() => setShowWishlistDialog(true)}
-        style={styles.wishlistButton}
-      >
-        Agregar a Wishlist
-      </Button>
+      <Animated.View entering={FadeInUp.delay(400).duration(300)}>
+        <Button
+          mode="contained"
+          icon="plus"
+          onPress={() => setShowDialog(true)}
+          style={styles.addButton}
+        >
+          Agregar a Coleccion
+        </Button>
+        <Button
+          mode="outlined"
+          icon="heart-outline"
+          onPress={() => setShowWishlistDialog(true)}
+          style={styles.wishlistButton}
+        >
+          Agregar a Wishlist
+        </Button>
+      </Animated.View>
 
       {/* Dialog seleccionar coleccion */}
       <Portal>
@@ -220,6 +235,8 @@ export default function CardDetailScreen({ route }: CardDetailScreenProps) {
                   },
                   {
                     onSuccess: () => {
+                      haptics.success();
+                      showSnackbar({ text: 'Carta agregada a wishlist', type: 'success' });
                       setShowWishlistDialog(false);
                       setWishlistPriority('3');
                       setWishlistMaxPrice('');

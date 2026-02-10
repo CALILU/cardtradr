@@ -3,7 +3,7 @@ import { View, FlatList, RefreshControl, StyleSheet } from 'react-native';
 import { Searchbar, List, Button, Text, Divider, IconButton } from 'react-native-paper';
 import { colors, spacing } from '../theme';
 import { useGames, useExpansions, useCards } from '../hooks';
-import { LoadingScreen, ErrorMessage, EmptyState, CardPreview, CardGridItem } from '../components';
+import { ErrorMessage, EmptyState, CardPreview, CardGridItem, CollectionListSkeleton, CardListSkeleton, CardGridSkeleton } from '../components';
 import { useSettingsStore } from '../store/settings.store';
 import type { SearchScreenProps } from '../navigation/types';
 import type { TCGGame, TCGExpansion } from '../types';
@@ -133,7 +133,7 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
   );
 
   function renderGames() {
-    if (gamesQuery.isLoading) return <LoadingScreen message="Cargando juegos..." />;
+    if (gamesQuery.isLoading) return <CollectionListSkeleton />;
     if (gamesQuery.error)
       return <ErrorMessage message={gamesQuery.error.message} onRetry={() => gamesQuery.refetch()} />;
     if (filteredGames.length === 0)
@@ -161,7 +161,7 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
   }
 
   function renderExpansions() {
-    if (expansionsQuery.isLoading) return <LoadingScreen message="Cargando expansiones..." />;
+    if (expansionsQuery.isLoading) return <CollectionListSkeleton />;
     if (expansionsQuery.error)
       return (
         <ErrorMessage
@@ -200,7 +200,7 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
   }
 
   function renderCards() {
-    if (cardsQuery.isLoading) return <LoadingScreen message="Cargando cartas..." />;
+    if (cardsQuery.isLoading) return cardViewMode === 'grid' ? <CardGridSkeleton /> : <CardListSkeleton />;
     if (cardsQuery.error)
       return <ErrorMessage message={cardsQuery.error.message} onRetry={() => cardsQuery.refetch()} />;
     if (filteredCards.length === 0)
